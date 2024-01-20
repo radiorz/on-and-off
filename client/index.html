@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+
+<body>
+  <div id="id"></div>
+  <div id="status"></div>
+  <div id="others"></div>
+  <button onclick="turnOn()">turnOn</button>
+  <button onclick="turnOff()">turnOff</button>
+  <script>
+    let id = Math.random()
+    const idDiv = document.querySelector('#id')
+    idDiv.innerHTML = id
+    // 创建 WebSocket 连接
+    const socket = new WebSocket('ws://localhost:8080');
+    const othersDiv = document.querySelector('#others')
+    // 监听连接打开事件
+    socket.onopen = () => {
+      console.log('WebSocket 连接已建立');
+      status.onChange()
+    };
+
+    // 监听消息接收事件
+    socket.onmessage = (event) => {
+      console.log('收到服务器消息:', event.data);
+      let obj = null;
+      try {
+        obj = JSON.parse(event.data)
+      } catch (error) {
+
+      }
+      if (obj.type === 'status') {
+        // 清空
+        othersDiv.innerHTML = ''
+        obj.data.forEach(client => {
+          // 添加
+          const child = document.createElement('div')
+          child.innerHTML = JSON.stringify(client)
+          othersDiv.appendChild(child)
+        })
+      }
+    };
+
+    // 监听连接关闭事件
+    socket.onclose = () => {
+      console.log('WebSocket 连接已关闭');
+    };
+    const statusDiv = document.querySelector('#status')
+    // 可能可以用new Proxy监听
+    let status = {
+      value: false,
+      get() {
+        return this.value
+      },
+      set(status) {
+        this.value = status;
+        this.onChange()
+      },
+      onChange() {
+        // 显示
+        statusDiv.innerHTML = "状态为" + this.value
+        // 提交服务器
+        socket.send(JSON.stringify({ type: 'init', id, status: this.value }))
+      }
+    }
+
+    function turnOn() {
+      status.set(true);
+    }
+    function turnOff() {
+      status.set(false)
+    }
+
+  </script>
+</body>
+
+</html>
